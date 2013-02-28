@@ -20,7 +20,8 @@
                         logging is working. Only certain files are getting backed up at the present time.
     v1.5 (2012-Dec-03) - Zip functions to keep log files to a minimum is working
     v1.6 (2013-Feb-20) - minor tweaks to code and comments. Modified the LogWrite function.
-    v2.0 (2013-feb-28) - Complete re-write of CopyFiles function. Removed MD5 check of folders (not necessary).
+    v2.0 (2013-Feb-28) - Complete re-write of CopyFiles function. Removed MD5 check of folders (not necessary).
+                        Also re-wrote the foreach loop that grabs the list of files/folders from the backup path
 
 .REFERENCES
     - http://stackoverflow.com/questions/7834656/create-log-file-in-powershell
@@ -68,7 +69,7 @@ Function LogWrite ([string]$logString)
 #*==============================================
 function New-Zip ([string]$zipfilename,$debugMode=0)
 {
-  set-content $zipfilename ("PK" + [char]5 + [char]6 + ("$([char]0)" * 18))
+	set-content $zipfilename ("PK" + [char]5 + [char]6 + ("$([char]0)" * 18))
 	(Get-ChildItem $zipfilename).IsReadOnly = $false
 } #end New-Zip
 
@@ -238,7 +239,7 @@ function CopyModifiedFiles ($fileToCheck, $destPath, $sourcePath)
 #------------------------------------------------------------------------
 #- This is where the paths are defined
 #------------------------------------------------------------------------
-$destPath = "\\192.168.1.1\Backup\";
+$destPath = "\\jomax.paholdings.com\data\Home\mkoegel\Backup\";
 $sourcePath = (Get-Content "C:\PowerShell\ComputerBackup\PathsToBackup.txt");
 $logsDestination = "C:\PowerShell\ComputerBackup\Logs";
 $zipArchive = "C:\PowerShell\ComputerBackup\Logs\Logs.zip";
@@ -273,11 +274,8 @@ else
 foreach ($path in $sourcePath)
 {
     #getting a full directory listing of the source path
-    $dirList= (Get-ChildItem $path -Recurse);
-
-    #passing each file through the function.
-    foreach ($entry in $dirList)
-    {
+    Get-ChildItem $path -Recurse | ForEach-Object {
+        $entry = $_
         #checking to see if it's a directory. Lesson learned: dir | gm has two seperate function types.
         #It contains System.IO.DirectoryInfo and System.IO.FileInfo
         $isdir = $entry | Where-Object {$_.PsIsContainer -eq $true};
@@ -291,5 +289,5 @@ foreach ($path in $sourcePath)
         {
             CopyModifiedFiles $entry $destPath $($entry.DirectoryName);
         } #end else
-    } #end foreach
+    } #end ForEach-Object
 } #end foreach 
