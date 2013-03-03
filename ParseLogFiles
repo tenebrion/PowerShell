@@ -1,0 +1,56 @@
+#Some good information for speeding up parsing large log files can be found here:
+#http://stackoverflow.com/questions/9439210/how-can-i-make-this-powershell-script-parse-large-files-faster
+
+#This is so I can determine how long the script takes.
+$start = Get-Date;
+
+#This section is defining the path and file names as well as the output file path
+$path = "C:\PowerShell\TestFiles";
+$fileName = "ex*.log";
+$outfile = "FTPLogAudit-10-12-2012.txt";
+
+#This section contains the customer info. This will need to be changed by the end user
+$userName = "testuser12345";
+
+
+#This is the select-string section to filter out the results we need.
+$grabUserLines = (select-string -path $path\$fileName -Pattern "USER $userName " -SimpleMatch) | ForEach-Object{$_.Line};
+
+#This foreach loop is grabbing the user IP and then searching for any lines that
+#do not have an user name next to the IP address. The array is being set in the event
+#a user logs in from multiple IP addresses.
+$userIPArray = @{};
+foreach ($line in $grabUserLines)
+{    
+    $temp = $line.Split();
+    $userIP = $temp[2];
+
+    #make sure the IP is not in the userIPArray. If it is not present, it will add it.
+    if (!($userIPArray.ContainsKey($userIP)))
+    {
+        $userIPArray.Add($userIP, "1")
+    } # end if
+} #end foreach
+
+#initializing the userIPResults variable and then executing the select-string to store everything
+#into the variable.
+$userIPResults = "";
+$userIPResults = (Select-String "$path\$fileName" -pattern $($userIPArray.Keys) -SimpleMatch);
+
+
+$fileStream = [System.IO.StreamWriter] "$path\$outfile";
+foreach ($item in $userIPResults)
+{
+    $fileStream.WriteLine($item)
+} #end foreach
+$fileStream.Close()
+
+#$grabUserLines | Out-File $path\$outfile;
+#$grabIPWithoutUserName | Out-File $path\$outfile -Append;
+
+
+#This times how long the search/query takes
+$end = Get-Date;
+$totalTime = $end - $start;
+"Completed in $($totalTime.TotalSeconds) seconds"
+"Resulting rows: $($userIPResults.Length)"
